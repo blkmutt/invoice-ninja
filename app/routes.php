@@ -66,18 +66,30 @@ Route::group(array('before' => 'auth'), function()
 	Route::post('user/setTheme', 'UserController@setTheme');
   Route::post('remove_logo', 'AccountController@removeLogo');
 
+	Route::get('clients/deleted', 'ClientController@allDeleted');
+	Route::get('clients/archived', 'ClientController@allArchived');
 	Route::resource('clients', 'ClientController');
 	Route::get('api/clients', array('as'=>'api.clients', 'uses'=>'ClientController@getDatatable'));
 	Route::get('api/activities/{client_id?}', array('as'=>'api.activities', 'uses'=>'ActivityController@getDatatable'));	
-	Route::post('clients/bulk', 'ClientController@bulk');
+	Route::get('api/deleted_clients', array('as'=>'api.deleted_clients', 'uses'=>'ClientController@getDeletedDatatable'));	
+	Route::get('api/archived_clients', array('as'=>'api.archived_clients', 'uses'=>'ClientController@getArchivedDatatable'));		
+	Route::post('clients/bulk', 'ClientController@bulk');	
+	Route::post('deleted_clients/bulk', 'ClientController@bulk');
+	Route::post('archived_clients/bulk', 'ClientController@bulk');
 
+	Route::get('invoices/archived', 'InvoiceController@allArchived');
+	Route::get('invoices/deleted', 'InvoiceController@allDeleted');
 	Route::get('recurring_invoices', 'InvoiceController@recurringIndex');
 	Route::get('api/recurring_invoices/{client_id?}', array('as'=>'api.recurring_invoices', 'uses'=>'InvoiceController@getRecurringDatatable'));	
+	Route::get('api/deleted_invoices/{client_id?}', array('as'=>'api.deleted_invoices', 'uses'=>'InvoiceController@getDeletedDatatable'));	
+	Route::get('api/archived_invoices/{client_id?}', array('as'=>'api.archived_invoices', 'uses'=>'InvoiceController@getArchivedDatatable'));	
 
 	Route::resource('invoices', 'InvoiceController');
 	Route::get('api/invoices/{client_id?}', array('as'=>'api.invoices', 'uses'=>'InvoiceController@getDatatable'));	
 	Route::get('invoices/create/{client_id?}', 'InvoiceController@create');
 	Route::post('invoices/bulk', 'InvoiceController@bulk');
+	Route::post('deleted_invoices/bulk', 'InvoiceController@bulk');
+	Route::post('archived_invoices/bulk', 'InvoiceController@bulk');
 
 	Route::get('payments/{id}/edit', function() { return View::make('header'); });
 	Route::resource('payments', 'PaymentController');
@@ -178,8 +190,12 @@ define('ENV_PRODUCTION', 'fortrabbit');
 
 define('RECENTLY_VIEWED', 'RECENTLY_VIEWED');
 define('ENTITY_CLIENT', 'client');
+define('ENTITY_DELETED_CLIENT', 'deleted_client');
+define('ENTITY_ARCHIVED_CLIENT', 'archived_client');
 define('ENTITY_INVOICE', 'invoice');
 define('ENTITY_RECURRING_INVOICE', 'recurring_invoice');
+define('ENTITY_ARCHIVED_INVOICE', 'archived_invoice');
+define('ENTITY_DELETED_INVOICE', 'deleted_invoice');
 define('ENTITY_PAYMENT', 'payment');
 define('ENTITY_CREDIT', 'credit');
 

@@ -26,6 +26,26 @@ class ClientController extends \BaseController {
 			'columns'=>Utils::trans(['checkbox', 'client', 'contact', 'email', 'date_created', 'last_login', 'balance', 'action'])
 		));		
 	}
+	
+	public function allDeleted()
+	{
+		return View::make('list', array(
+			'entityType'=>ENTITY_DELETED_CLIENT, 
+			'title' => '- Deleted Clients',
+			'columns'=>Utils::trans(['checkbox', 'client', 'contact', 'email', 'date_created', 'last_login', 'balance', 'action']),
+			'redirectUrl'=>'deleted'
+		));		
+	}
+	
+	public function allArchived()
+	{
+		return View::make('list', array(
+			'entityType'=>ENTITY_ARCHIVED_CLIENT, 
+			'title' => '- Archived Clients',
+			'columns'=>Utils::trans(['checkbox', 'client', 'contact', 'email', 'date_created', 'last_login', 'balance', 'action']),
+			'redirectUrl'=>'archived'
+		));		
+	}
 
 	public function getDatatable()
     {    	
@@ -54,6 +74,70 @@ class ClientController extends \BaseController {
 						    <li class="divider"></li>
 						    <li><a href="javascript:archiveEntity(' . $model->public_id. ')">'.trans('texts.archive_client').'</a></li>
 						    <li><a href="javascript:deleteEntity(' . $model->public_id. ')">'.trans('texts.delete_client').'</a></li>						    
+						  </ul>
+						</div>';
+    	    })    	   
+    	    ->make();    	    
+    }
+
+	public function getDeletedDatatable()
+    {    	
+    	$clients = $this->clientRepo->findDeleted(Input::get('sSearch'));
+
+        return Datatable::query($clients)
+    	    ->addColumn('checkbox', function($model) { return '<input type="checkbox" name="ids[]" value="' . $model->public_id . '">'; })
+    	    ->addColumn('name', function($model) { return link_to('clients/' . $model->public_id, $model->name); })
+    	    ->addColumn('first_name', function($model) { return link_to('clients/' . $model->public_id, $model->first_name . ' ' . $model->last_name); })
+    	    ->addColumn('email', function($model) { return link_to('clients/' . $model->public_id, $model->email); })
+    	    ->addColumn('created_at', function($model) { return Utils::timestampToDateString(strtotime($model->created_at)); })
+    	    ->addColumn('last_login', function($model) { return Utils::timestampToDateString(strtotime($model->last_login)); })
+    	    ->addColumn('balance', function($model) { return Utils::formatMoney($model->balance, $model->currency_id); })    	    
+    	    ->addColumn('dropdown', function($model) 
+    	    { 
+    	    	return '<div class="btn-group tr-action" style="visibility:hidden;">
+  							<button type="button" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown">
+    							'.trans('texts.select').' <span class="caret"></span>
+  							</button>
+  							<ul class="dropdown-menu" role="menu">
+  							<li><a href="' . URL::to('clients/'.$model->public_id.'/edit') . '">'.trans('texts.edit_client').'</a></li>
+						    <li class="divider"></li>
+						    <li><a href="' . URL::to('invoices/create/'.$model->public_id) . '">'.trans('texts.new_invoice').'</a></li>						    
+						    <li><a href="' . URL::to('payments/create/'.$model->public_id) . '">'.trans('texts.new_payment').'</a></li>						    
+						    <li><a href="' . URL::to('credits/create/'.$model->public_id) . '">'.trans('texts.new_credit').'</a></li>						    
+						    <li class="divider"></li>
+						    <li><a href="javascript:undeleteEntity(' . $model->public_id. ')">'.trans('texts.undelete_client').'</a></li>						    
+						  </ul>
+						</div>';
+    	    })    	   
+    	    ->make();    	    
+    }
+
+	public function getArchivedDatatable()
+    {    	
+    	$clients = $this->clientRepo->findArchived(Input::get('sSearch'));
+
+        return Datatable::query($clients)
+    	    ->addColumn('checkbox', function($model) { return '<input type="checkbox" name="ids[]" value="' . $model->public_id . '">'; })
+    	    ->addColumn('name', function($model) { return link_to('clients/' . $model->public_id, $model->name); })
+    	    ->addColumn('first_name', function($model) { return link_to('clients/' . $model->public_id, $model->first_name . ' ' . $model->last_name); })
+    	    ->addColumn('email', function($model) { return link_to('clients/' . $model->public_id, $model->email); })
+    	    ->addColumn('created_at', function($model) { return Utils::timestampToDateString(strtotime($model->created_at)); })
+    	    ->addColumn('last_login', function($model) { return Utils::timestampToDateString(strtotime($model->last_login)); })
+    	    ->addColumn('balance', function($model) { return Utils::formatMoney($model->balance, $model->currency_id); })    	    
+    	    ->addColumn('dropdown', function($model) 
+    	    { 
+    	    	return '<div class="btn-group tr-action" style="visibility:hidden;">
+  							<button type="button" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown">
+    							'.trans('texts.select').' <span class="caret"></span>
+  							</button>
+  							<ul class="dropdown-menu" role="menu">
+  							<li><a href="' . URL::to('clients/'.$model->public_id.'/edit') . '">'.trans('texts.edit_client').'</a></li>
+						    <li class="divider"></li>
+						    <li><a href="' . URL::to('invoices/create/'.$model->public_id) . '">'.trans('texts.new_invoice').'</a></li>						    
+						    <li><a href="' . URL::to('payments/create/'.$model->public_id) . '">'.trans('texts.new_payment').'</a></li>						    
+						    <li><a href="' . URL::to('credits/create/'.$model->public_id) . '">'.trans('texts.new_credit').'</a></li>						    
+						    <li class="divider"></li>
+						    <li><a href="javascript:undeleteEntity(' . $model->public_id. ')">'.trans('texts.undelete_client').'</a></li>						    
 						  </ul>
 						</div>';
     	    })    	   
@@ -244,12 +328,13 @@ class ClientController extends \BaseController {
 	public function bulk()
 	{
 		$action = Input::get('action');
-		$ids = Input::get('id') ? Input::get('id') : Input::get('ids');		
+		$ids = Input::get('id') ? Input::get('id') : Input::get('ids');	
+		$redirectUrl = Input::get('redirectUrl')  ? 'clients/'.Input::get('redirectUrl') : 'clients';	
 		$count = $this->clientRepo->bulk($ids, $action);
 
 		$message = Utils::pluralize($action.'d_client', $count);
 		Session::flash('message', $message);
 
-		return Redirect::to('clients');
+		return Redirect::to($redirectUrl);
 	}
 }

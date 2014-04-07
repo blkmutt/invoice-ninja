@@ -31,6 +31,54 @@ class ClientRepository
 
     	return $query;
 	}
+	
+	public function findDeleted($filter = null)
+	{
+    	$query = \DB::table('clients')
+    				->join('contacts', 'contacts.client_id', '=', 'clients.id')
+					->whereNotNull('clients.deleted_at')
+					->where('clients.is_deleted', '=', true)
+    				->where('clients.account_id', '=', \Auth::user()->account_id)
+    				->where('contacts.is_primary', '=', true)
+    				->select('clients.public_id','clients.name','contacts.first_name','contacts.last_name','clients.balance','clients.last_login','clients.created_at','clients.work_phone','contacts.email','clients.currency_id');
+
+    	if ($filter)
+    	{
+    		$query->where(function($query) use ($filter)
+            {
+            	$query->where('clients.name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.first_name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.last_name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.email', 'like', '%'.$filter.'%');
+            });
+    	}
+
+    	return $query;
+	}
+	
+	public function findArchived($filter = null)
+	{
+    	$query = \DB::table('clients')
+    				->join('contacts', 'contacts.client_id', '=', 'clients.id')
+					->whereNotNull('clients.deleted_at')
+					->where('clients.is_deleted', '=', false)
+    				->where('clients.account_id', '=', \Auth::user()->account_id)
+    				->where('contacts.is_primary', '=', true)
+    				->select('clients.public_id','clients.name','contacts.first_name','contacts.last_name','clients.balance','clients.last_login','clients.created_at','clients.work_phone','contacts.email','clients.currency_id');
+
+    	if ($filter)
+    	{
+    		$query->where(function($query) use ($filter)
+            {
+            	$query->where('clients.name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.first_name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.last_name', 'like', '%'.$filter.'%')
+            		  ->orWhere('contacts.email', 'like', '%'.$filter.'%');
+            });
+    	}
+
+    	return $query;
+	}
 
 	public function save($publicId, $data)
 	{			
@@ -110,17 +158,27 @@ class ClientRepository
 
 	public function bulk($ids, $action)
 	{
-		$clients = Client::scope($ids)->get();
+		$clients = Client::withTrashed()->scope($ids)->get();
 
 		foreach ($clients as $client) 
-		{			
-			if ($action == 'delete') 
+		{		
+			switch($action)
 			{
-				$client->is_deleted = true;
-				$client->save();
-			} 
-			
-			$client->delete();			
+				case 'delete':
+					$client->is_deleted = true;
+					$client->save();
+					$client->delete();
+					break;
+				case 'archive':
+					$client->delete();
+					break;
+				case 'undelete':
+				case 'unarchive':
+					$client->is_deleted = false;
+					$client->deleted_at = null;
+					$client->save();
+					break;
+			}		
 		}
 
 		return count($clients);

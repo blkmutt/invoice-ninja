@@ -53,7 +53,7 @@ class InvoiceRepository
   					->join('frequencies', 'frequencies.id', '=', 'invoices.frequency_id')
 	   				->join('contacts', 'contacts.client_id', '=', 'clients.id')
 		  			->where('invoices.account_id', '=', $accountId)
-            ->where('clients.deleted_at', '=', null)
+            		->where('clients.deleted_at', '=', null)
     				->where('invoices.is_recurring', '=', true)
     				->where('contacts.is_primary', '=', true)	
 			   		->select('clients.public_id as client_public_id', 'clients.name as client_name', 'invoices.public_id', 'amount', 'frequencies.name as frequency', 'start_date', 'end_date', 'clients.currency_id', 'contacts.first_name', 'contacts.last_name', 'contacts.email');
@@ -74,6 +74,74 @@ class InvoiceRepository
             {
             	$query->where('clients.name', 'like', '%'.$filter.'%')
             		  ->orWhere('invoices.invoice_number', 'like', '%'.$filter.'%');
+            });
+    	}
+
+    	return $query;
+	}
+
+	public function getDeletedInvoices($accountId, $clientPublicId = false, $filter = false)
+	{
+    	$query = \DB::table('invoices')
+    				->join('clients', 'clients.id', '=','invoices.client_id')
+  					->join('invoice_statuses', 'invoice_statuses.id', '=', 'invoices.invoice_status_id')
+  					->join('contacts', 'contacts.client_id', '=', 'clients.id')
+  					->where('invoices.account_id', '=', $accountId)
+            		->whereNotNull('invoices.deleted_at')
+    				->where('invoices.is_deleted', '=', true)
+    				->where('invoices.is_recurring', '=', false)    			
+    				->where('contacts.is_primary', '=', true)	
+  					->select('clients.public_id as client_public_id', 'invoice_number', 'clients.name as client_name', 'invoices.public_id', 'amount', 'invoices.balance', 'invoice_date', 'due_date', 'invoice_statuses.name as invoice_status_name', 'clients.currency_id', 'contacts.first_name', 'contacts.last_name', 'contacts.email');
+
+    	if ($clientPublicId) 
+    	{
+    		$query->where('clients.public_id', '=', $clientPublicId);
+    	}
+
+    	if ($filter)
+    	{
+    		$query->where(function($query) use ($filter)
+            {
+            	$query->where('clients.name', 'like', '%'.$filter.'%')
+            		  ->orWhere('invoices.invoice_number', 'like', '%'.$filter.'%')
+            		  ->orWhere('invoice_statuses.name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.first_name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.last_name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.email', 'like', '%'.$filter.'%');
+            });
+    	}
+
+    	return $query;
+	}
+
+	public function getArchivedInvoices($accountId, $clientPublicId = false, $filter = false)
+	{
+    	$query = \DB::table('invoices')
+    				->join('clients', 'clients.id', '=','invoices.client_id')
+  					->join('invoice_statuses', 'invoice_statuses.id', '=', 'invoices.invoice_status_id')
+  					->join('contacts', 'contacts.client_id', '=', 'clients.id')
+  					->where('invoices.account_id', '=', $accountId)
+            		->whereNotNull('invoices.deleted_at')
+    				->where('invoices.is_deleted', '=', false)
+    				->where('invoices.is_recurring', '=', false)    			
+    				->where('contacts.is_primary', '=', true)	
+  					->select('clients.public_id as client_public_id', 'invoice_number', 'clients.name as client_name', 'invoices.public_id', 'amount', 'invoices.balance', 'invoice_date', 'due_date', 'invoice_statuses.name as invoice_status_name', 'clients.currency_id', 'contacts.first_name', 'contacts.last_name', 'contacts.email');
+
+    	if ($clientPublicId) 
+    	{
+    		$query->where('clients.public_id', '=', $clientPublicId);
+    	}
+
+    	if ($filter)
+    	{
+    		$query->where(function($query) use ($filter)
+            {
+            	$query->where('clients.name', 'like', '%'.$filter.'%')
+            		  ->orWhere('invoices.invoice_number', 'like', '%'.$filter.'%')
+            		  ->orWhere('invoice_statuses.name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.first_name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.last_name', 'like', '%'.$filter.'%')
+                  ->orWhere('contacts.email', 'like', '%'.$filter.'%');
             });
     	}
 
@@ -250,17 +318,27 @@ class InvoiceRepository
 			return 0;
 		}
 
-		$invoices = Invoice::scope($ids)->get();
+		$invoices = Invoice::withTrashed()->scope($ids)->get();
 
 		foreach ($invoices as $invoice) 
 		{
-			if ($action == 'delete') 
+			switch($action)
 			{
-				$invoice->is_deleted = true;
-				$invoice->save();
-			} 
-
-			$invoice->delete();
+				case 'delete':
+					$invoice->is_deleted = true;
+					$invoice->save();
+					$invoice->delete();
+					break;
+				case 'archive':
+					$invoice->delete();
+					break;
+				case 'undelete':
+				case 'unarchive':
+					$invoice->is_deleted = false;
+					$invoice->deleted_at = null;
+					$invoice->save();
+					break;
+			}
 		}
 
 		return count($invoices);

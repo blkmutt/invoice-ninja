@@ -39,6 +39,42 @@ class InvoiceController extends \BaseController {
 		return View::make('list', $data);
 	}
 
+	public function allArchived()
+	{
+		$data = [
+			'title' => '- Archived Invoices',
+			'entityType'=>ENTITY_ARCHIVED_INVOICE, 
+			'columns'=>Utils::trans(['checkbox', 'invoice_number', 'client', 'invoice_date', 'invoice_total', 'balance_due', 'due_date', 'status', 'action']),
+			'redirectUrl'=>'archived'
+		];
+
+		if (Invoice::scope()->where('is_recurring', '=', true)->count() > 0)
+		{
+			$data['secEntityType'] = ENTITY_RECURRING_INVOICE;
+			$data['secColumns'] = Utils::trans(['checkbox', 'frequency', 'client', 'start_date', 'end_date', 'invoice_total', 'action']);
+		}
+
+		return View::make('list', $data);
+	}
+
+	public function allDeleted()
+	{
+		$data = [
+			'title' => '- Deleted Invoices',
+			'entityType'=>ENTITY_DELETED_INVOICE, 
+			'columns'=>Utils::trans(['checkbox', 'invoice_number', 'client', 'invoice_date', 'invoice_total', 'balance_due', 'due_date', 'status', 'action']),
+			'redirectUrl'=>'deleted'
+		];
+
+		if (Invoice::scope()->where('is_recurring', '=', true)->count() > 0)
+		{
+			$data['secEntityType'] = ENTITY_RECURRING_INVOICE;
+			$data['secColumns'] = Utils::trans(['checkbox', 'frequency', 'client', 'start_date', 'end_date', 'invoice_total', 'action']);
+		}
+
+		return View::make('list', $data);
+	}
+
 	public function getDatatable($clientPublicId = null)
     {
     	$query = $this->invoiceRepo->getInvoices(Auth::user()->account_id, $clientPublicId, Input::get('sSearch'));
@@ -77,9 +113,86 @@ class InvoiceController extends \BaseController {
     	    ->make();    	
     }
 
+	public function getArchivedDatatable($clientPublicId = null)
+    {
+    	$query = $this->invoiceRepo->getArchivedInvoices(Auth::user()->account_id, $clientPublicId, Input::get('sSearch'));
+    	$table = Datatable::query($query);			
+
+    	if (!$clientPublicId) {
+    		$table->addColumn('checkbox', function($model) { return '<input type="checkbox" name="ids[]" value="' . $model->public_id . '">'; });
+    	}
+    	
+    	$table->addColumn('invoice_number', function($model) { return link_to('invoices/' . $model->public_id . '/edit', $model->invoice_number); });
+
+    	if (!$clientPublicId) {
+    		$table->addColumn('client_name', function($model) { return link_to('clients/' . $model->client_public_id, Utils::getClientDisplayName($model)); });
+    	}
+    	
+    	return $table->addColumn('invoice_date', function($model) { return Utils::fromSqlDate($model->invoice_date); })    	    
+    		->addColumn('amount', function($model) { return Utils::formatMoney($model->amount, $model->currency_id); })
+    		->addColumn('balance', function($model) { return Utils::formatMoney($model->balance, $model->currency_id); })
+    	    ->addColumn('due_date', function($model) { return Utils::fromSqlDate($model->due_date); })
+    	    ->addColumn('invoice_status_name', function($model) { return $model->invoice_status_name; })
+    	    ->addColumn('dropdown', function($model) 
+    	    { 
+    	    	return '<div class="btn-group tr-action" style="visibility:hidden;">
+  							<button type="button" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown">
+    							'.trans('texts.select').' <span class="caret"></span>
+  							</button>
+  							<ul class="dropdown-menu" role="menu">
+						    <li><a href="' . URL::to('invoices/'.$model->public_id.'/edit') . '">'.trans('texts.edit_invoice').'</a></li>
+						    <li><a href="' . URL::to('payments/create/' . $model->client_public_id . '/' . $model->public_id ) . '">'.trans('texts.enter_payment').'</a></li>
+						    <li class="divider"></li>
+						    <li><a href="javascript:deleteEntity(' . $model->public_id . ')">'.trans('texts.delete_invoice').'</a></li>						    
+						    <li class="divider"></li>
+						    <li><a href="javascript:unarchiveEntity(' . $model->public_id . ')">'.trans('texts.unarchive_invoice').'</a></li>						    
+						  </ul>
+						</div>';
+    	    })    	       	    
+    	    ->make();   
+	}
+
+	public function getDeletedDatatable($clientPublicId = null)
+    {
+    	$query = $this->invoiceRepo->getDeletedInvoices(Auth::user()->account_id, $clientPublicId, Input::get('sSearch'));
+    	$table = Datatable::query($query);			
+
+    	if (!$clientPublicId) {
+    		$table->addColumn('checkbox', function($model) { return '<input type="checkbox" name="ids[]" value="' . $model->public_id . '">'; });
+    	}
+    	
+    	$table->addColumn('invoice_number', function($model) { return link_to('invoices/' . $model->public_id . '/edit', $model->invoice_number); });
+
+    	if (!$clientPublicId) {
+    		$table->addColumn('client_name', function($model) { return link_to('clients/' . $model->client_public_id, Utils::getClientDisplayName($model)); });
+    	}
+    	
+    	return $table->addColumn('invoice_date', function($model) { return Utils::fromSqlDate($model->invoice_date); })    	    
+    		->addColumn('amount', function($model) { return Utils::formatMoney($model->amount, $model->currency_id); })
+    		->addColumn('balance', function($model) { return Utils::formatMoney($model->balance, $model->currency_id); })
+    	    ->addColumn('due_date', function($model) { return Utils::fromSqlDate($model->due_date); })
+    	    ->addColumn('invoice_status_name', function($model) { return $model->invoice_status_name; })
+    	    ->addColumn('dropdown', function($model) 
+    	    { 
+    	    	return '<div class="btn-group tr-action" style="visibility:hidden;">
+  							<button type="button" class="btn btn-xs btn-default dropdown-toggle" data-toggle="dropdown">
+    							'.trans('texts.select').' <span class="caret"></span>
+  							</button>
+  							<ul class="dropdown-menu" role="menu">
+						    <li><a href="' . URL::to('invoices/'.$model->public_id.'/edit') . '">'.trans('texts.edit_invoice').'</a></li>
+						    <li><a href="' . URL::to('payments/create/' . $model->client_public_id . '/' . $model->public_id ) . '">'.trans('texts.enter_payment').'</a></li>
+						    <li class="divider"></li>
+						    <li><a href="javascript:undeleteEntity(' . $model->public_id . ')">'.trans('texts.undelete_invoice').'</a></li>						    
+						  </ul>
+						</div>';
+    	    })    	       	    
+    	    ->make(); 
+	}
+
 	public function getRecurringDatatable($clientPublicId = null)
     {
-    	$query = $this->invoiceRepo->getRecurringInvoices(Auth::user()->account_id, $clientPublicId, Input::get('sSearch'));
+		$query = $this->invoiceRepo->getRecurringInvoices(Auth::user()->account_id, $clientPublicId, Input::get('sSearch'));
+    	
     	$table = Datatable::query($query);			
 
     	if (!$clientPublicId) {
@@ -382,6 +495,7 @@ class InvoiceController extends \BaseController {
 	{
 		$action = Input::get('action');
 		$ids = Input::get('id') ? Input::get('id') : Input::get('ids');
+		$redirectUrl = Input::get('redirectUrl')  ? 'invoices/'.Input::get('redirectUrl') : 'invoices';
 		$count = $this->invoiceRepo->bulk($ids, $action);
 
  		if ($count > 0)		
@@ -390,7 +504,7 @@ class InvoiceController extends \BaseController {
 			Session::flash('message', $message);
 		}
 
-		return Redirect::to('invoices');
+		return Redirect::to($redirectUrl);
 	}
 
 	public static function cloneInvoice($publicId)

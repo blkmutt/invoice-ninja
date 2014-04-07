@@ -6,8 +6,13 @@
 	<div style="display:none">
 		{{ Former::text('action') }}
 		{{ Former::text('id') }}
+		@if(isset($redirectUrl))
+		{{ Former::text('redirectUrl')->value($redirectUrl)}}
+		@endif
 	</div>
 
+	@if ($entityType != ENTITY_ARCHIVED_INVOICE && $entityType != ENTITY_DELETED_INVOICE 
+			&& $entityType != ENTITY_DELETED_CLIENT && $entityType != ENTITY_ARCHIVED_CLIENT)
 	{{ DropdownButton::normal(trans('texts.archive'),
 		  Navigation::links(
 		    array(
@@ -21,11 +26,14 @@
 		<input id="trashed" type="checkbox" onclick="setTrashVisible()" 
 			{{ Session::get('show_trash') ? 'checked' : ''}}/> {{ trans('texts.show_archived_deleted')}} {{ strtolower(trans('texts.'.$entityType.'s')) }}
 	</label>
-
+	@endif
+	
 	<div id="top_right_buttons" class="pull-right">
 		<input id="tableFilter" type="text" style="width:140px;margin-right:17px" class="form-control pull-left" placeholder="{{ trans('texts.filter') }}"/> 
+		@if ($entityType != ENTITY_ARCHIVED_INVOICE && $entityType != ENTITY_DELETED_INVOICE 
+			&& $entityType != ENTITY_DELETED_CLIENT && $entityType != ENTITY_ARCHIVED_CLIENT)
 		{{ Button::success_link(URL::to($entityType . 's/create'), trans("texts.new_$entityType"), array('class' => 'pull-right'))->append_with_icon('plus-sign'); }}	
-        
+        @endif
 	</div>
 
     @if (isset($secEntityType))
@@ -65,6 +73,16 @@
 	function archiveEntity(id) {
 		$('#id').val(id);
 		submitForm('archive');
+	}
+
+	function unarchiveEntity(id) {
+		$('#id').val(id);
+		submitForm('unarchive');
+	}
+
+	function undeleteEntity(id) {
+		$('#id').val(id);
+		submitForm('undelete');
 	}
 
 	function setTrashVisible() {
