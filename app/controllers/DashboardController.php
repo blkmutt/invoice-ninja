@@ -41,6 +41,14 @@ class DashboardController extends \BaseController {
                   ->where('due_date', '>', date('Y-m-d'))
                   ->where('balance', '>', 0)
                   ->orderBy('due_date', 'asc')->take(6)->get();
+    
+    $select = DB::raw('SUM(balance) value');
+
+    $totalDue = DB::table('invoices')
+            ->select($select)
+  			->where('balance', '>', 0)
+			->where('account_id', '=', Auth::user()->account_id)
+			->first();
 
     $data = [
       'totalIncome' => Utils::formatMoney($totalIncome ? $totalIncome->value : 0, Session::get(SESSION_CURRENCY)),
@@ -50,7 +58,8 @@ class DashboardController extends \BaseController {
       'invoiceAvg' => Utils::formatMoney(($metrics ? $metrics->invoice_avg : 0), Session::get(SESSION_CURRENCY)),
       'activities' => $activities,
       'pastDue' => $pastDue,
-      'upcoming' => $upcoming
+      'upcoming' => $upcoming,
+      'totalDue' => Utils::formatMoney(($totalDue ? $totalDue->value : 0), Session::get(SESSION_CURRENCY))
     ];
 
     return View::make('dashboard', $data);
