@@ -225,6 +225,10 @@ class InvoiceController extends \BaseController {
     	    ->make();    	
     }
 
+	public function getPastDueInvoices()
+	{
+		return json_encode($this->invoiceRepo->getPastDueInvoices());
+	}
 
 	public function view($invitationKey)
 	{

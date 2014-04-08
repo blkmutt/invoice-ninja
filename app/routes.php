@@ -82,7 +82,8 @@ Route::group(array('before' => 'auth'), function()
 	Route::get('recurring_invoices', 'InvoiceController@recurringIndex');
 	Route::get('api/recurring_invoices/{client_id?}', array('as'=>'api.recurring_invoices', 'uses'=>'InvoiceController@getRecurringDatatable'));	
 	Route::get('api/deleted_invoices/{client_id?}', array('as'=>'api.deleted_invoices', 'uses'=>'InvoiceController@getDeletedDatatable'));	
-	Route::get('api/archived_invoices/{client_id?}', array('as'=>'api.archived_invoices', 'uses'=>'InvoiceController@getArchivedDatatable'));	
+	Route::get('api/archived_invoices/{client_id?}', array('as'=>'api.archived_invoices', 'uses'=>'InvoiceController@getArchivedDatatable'));
+	Route::get('api/pastdue_invoices/{client_id?}', array('as'=>'api.pastdue_invoices', 'uses'=>'InvoiceController@getPastDueInvoices'));	
 
 	Route::resource('invoices', 'InvoiceController');
 	Route::get('api/invoices/{client_id?}', array('as'=>'api.invoices', 'uses'=>'InvoiceController@getDatatable'));	
